@@ -1,0 +1,12 @@
+Battery 
+Konect Lipo 14.8v 6700mah 60C 4S1P Bash XT90 https://www.rc-passion.com/konect-lipo-148v-6700mah-60c-4s1p-bash-xt90-139x46x45mm-a45885.html
+
+Gestion Batterie (à régler)
+Pololu D30V33MALCMA https://eu.robotshop.com/fr/products/pololu-regulateur-tension-abaisseur-ajustement-fin-14-7v-38a-avec-coupure-basse-tension-reglable-d30v33malcma
+
+Interrupteur étanche
+https://www.amazon.fr/Bouton-Poussoir-Momentan%C3%A9-19mm-Interrupteur-Poussoir/dp/B0D6Z1JSMV/ref=sr_1_4_sspa?__mk_fr_FR=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=10BRSY8OFKEX5&dib=eyJ2IjoiMSJ9.nDwFVP4LyGJzobo7hkLWx4NxEpeQJnWW5YI2rJSp2_v-S5HyMq55aKKhBXiNi1dSHP4fxnkfVg6jvn_wulIFTtQp8ybaxU8aEUROBISJGoPHV8Y646j1T3OQXBn_tZJnmxVbJGR_wevXWcn-0MY3io-J2zy_qPm03P9KbOdqoBmLFiJ0TRKac3UpR2GOvn_dAqd-pjd3wtN2_uYlg897tRRhruJ62ChMsB_nYifI17TIFpcgqUOCwLb_SljfvpCu_geyYylxK_-a8akavtKF0EVk00c8DFIiMInz42vvG9o._cIkwfe0_OCbjUoO-x0BqGR-Qc1WIwzRAzt_xyQ0KiE&dib_tag=se&keywords=interrupteur%2Bpoussoir%2B12v%2Betanche&qid=1757798536&sprefix=interrupteur%2Bpoussoir%2B12v%2Betanch%2Caps%2C99&sr=8-4-spons&sp_csd=d2lkZ2V0TmFtZT1zcF9hdGY&th=1
+https://www.amazon.fr/Bouton-Poussoir-Momentan%C3%A9-19mm-Interrupteur-Poussoir/dp/B0D6YTPHJT/ref=sr_1_4_sspa?__mk_fr_FR=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=10BRSY8OFKEX5&dib=eyJ2IjoiMSJ9.nDwFVP4LyGJzobo7hkLWx4NxEpeQJnWW5YI2rJSp2_v-S5HyMq55aKKhBXiNi1dSHP4fxnkfVg6jvn_wulIFTtQp8ybaxU8aEUROBISJGoPHV8Y646j1T3OQXBn_tZJnmxVbJGR_wevXWcn-0MY3io-J2zy_qPm03P9KbOdqoBmLFiJ0TRKac3UpR2GOvn_dAqd-pjd3wtN2_uYlg897tRRhruJ62ChMsB_nYifI17TIFpcgqUOCwLb_SljfvpCu_geyYylxK_-a8akavtKF0EVk00c8DFIiMInz42vvG9o._cIkwfe0_OCbjUoO-x0BqGR-Qc1WIwzRAzt_xyQ0KiE&dib_tag=se&keywords=interrupteur%2Bpoussoir%2B12v%2Betanche&qid=1757798536&sprefix=interrupteur%2Bpoussoir%2B12v%2Betanch%2Caps%2C99&sr=8-4-spons&sp_csd=d2lkZ2V0TmFtZT1zcF9hdGY&th=1
+
+Fusible 3A
+https://www.amazon.fr/fusible-Moyenne-Automotive-Fusibles-Standard/dp/B0DBPQBGBQ/ref=sr_1_15?dib=eyJ2IjoiMSJ9.jCWNu5IdZVAKyAOVIptaM-WBKfnAHJPiFVHDlYRnKQJNPTvOpWXzSXO76krAHm74TEs1ZtH5x_qavoeALsRWGWjUm9xdIjOJ6uGToCCnEWMOdH786WIch4pB8Vh1i-pNMXhqR3HKJ2q6TQGSfanR7iF54HHorEnICjULtMs58djbbvyfOGAEiehYI8hU9f5Xmjxt9EithzFHspN_5l_ceqGUksb5NU2vlqbGDZ_D21lX1k3cE7JqT3lBQ4H5wftQddfM9LP7sbS73khlBJJfjjz4pt66JJBfs-GRfA_QP6g.4di0WAuqnhgAdJF5BQvCtwXu4mKGhFJrd8iEVhoaXw0&dib_tag=se&keywords=fusible%2B3a&qid=1757798724&sr=8-15&th=1
