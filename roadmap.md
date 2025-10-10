@@ -3,7 +3,7 @@
 This document outlines the different steps we will take in order to develop the
 solution and bring forward a full package.
 
-## steps
+## Steps
 
 ### Arduino
 
