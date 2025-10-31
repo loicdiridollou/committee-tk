@@ -12,18 +12,18 @@ solution and bring forward a full package.
 
 ### Compass and GPS
 
-- [ ] Get compass and GPS module
-- [ ] Connect them to the board
-- [ ] Read signal
+- [x] Get compass and GPS module
+- [x] Connect them to the board
+- [x] Read signal
 
 ### Anemometer and Wind Direction
 
-- [ ] Get the elements
-- [ ] Connect the elements to the board
-- [ ] Read signal from them
+- [x] Get the elements
+- [x] Connect the elements to the board
+- [x] Read signal from them
 
 ### Onboard Storage
 
-- [ ] Get SD card module and SD card (< 32GB preferably)
-- [ ] Connect wires and make sure it can run
-- [ ] Write a file and check readability from computer
+- [x] Get SD card module and SD card (< 32GB preferably)
+- [x] Connect wires and make sure it can run
+- [x] Write a file and check readability from computer
