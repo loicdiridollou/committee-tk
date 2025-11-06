@@ -35,7 +35,7 @@ The module is the RS-FSJT-NPN.
 
 | Wire               | Pin   |
 | ------------------ | ----- |
-| Red wire (VCC)     | 5V    |
+| Brown wire (VCC)   | 5V    |
 | Black wire (GND)   | GND   |
 | Blue wire (Signal) | D2/D3 |
 
