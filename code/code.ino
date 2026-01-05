@@ -300,7 +300,7 @@ void handleWebClients() {
             client.println("<div class='label'>Compass Heading</div>");
             client.print("<div class='value'>");
             client.print(latest_heading, 1);
-            client.println("</div></div>");
+            client.println("&#xB0;</div></div>");
             
             // GPS Position
             client.println("<div class='reading gps'>");
