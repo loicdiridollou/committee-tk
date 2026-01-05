@@ -13,6 +13,7 @@ const char* ap_password = "weather123";  // At least 8 characters
 WiFiServer server(80);
 
 // SD Card pin
+bool SD_card_connected = false;
 const int chipSelect = 10;
 File dataFile;
 String currentFilename = "";
@@ -141,9 +142,10 @@ void setup() {
   // Initialize SD card
   if (!SD.begin(chipSelect)) {
     Serial.println("SD card initialization failed!");
-    while(1);
+  }else{
+    SD_card_connected = true;
+    Serial.println("SD card initialized");
   }
-  Serial.println("SD card initialized");
   Serial.println("Waiting for GPS date to create filename...");
 }
 
@@ -182,7 +184,7 @@ void loop() {
     latest_wind_speed = calculateWindSpeed();
     Serial.print("Wind Speed: ");
     Serial.print(latest_wind_speed, 1);
-    Serial.println("km/h");
+    Serial.println("kts");
 
     latest_wind_direction = readWindDirection();
     Serial.print("Wind direction: ");
@@ -193,10 +195,11 @@ void loop() {
 
     latest_heading = getAverageCompass();
     Serial.print("Heading: ");
-    Serial.println(latest_heading);
+    Serial.print(latest_heading);
+    Serial.println("°");
 
     // Log data to SD card only if file is ready and we have enough samples
-    if (fileReady && samplesCollected >= NUM_SAMPLES) {
+    if (SD_card_connected && fileReady && samplesCollected >= NUM_SAMPLES) {
       logDataToSD(latest_wind_speed, latest_wind_direction, latest_heading);
     }
 
@@ -283,7 +286,7 @@ void handleWebClients() {
             client.println("<div class='label'>Wind Speed</div>");
             client.print("<div class='value'>");
             client.print(latest_wind_speed, 1);
-            client.println(" km/h</div></div>");
+            client.println(" kts</div></div>");
             
             // Wind Direction
             client.println("<div class='reading'>");
@@ -351,7 +354,7 @@ void handleWebClients() {
             client.println("<div class='history-section'>");
             client.println("<h2>Wind History (Last 15 Minutes)</h2>");
             client.println("<table>");
-            client.println("<tr><th>Time Ago</th><th>Wind Speed (km/h)</th><th>Wind Direction (&#xB0;)</th></tr>");
+            client.println("<tr><th>Time Ago</th><th>Wind Speed (kts)</th><th>Wind Direction (&#xB0;)</th></tr>");
             
             if (historyCount == 0) {
               client.println("<tr><td colspan='3' style='text-align: center;'>No historical data yet...</td></tr>");
@@ -420,7 +423,7 @@ void initializeLogFile() {
     dataFile = SD.open(currentFilename.c_str(), FILE_WRITE);
     if (dataFile) {
       // Write CSV headers
-      dataFile.println("Timestamp,Latitude,Longitude,Satellites,Wind_Speed_kmh,Wind_Direction_deg,Heading_deg");
+      dataFile.println("Timestamp,Latitude,Longitude,Satellites,Wind_Speed_kts,Wind_Direction_deg,Heading_deg");
       dataFile.close();
       Serial.println("Headers written successfully");
       fileReady = true;
