@@ -53,11 +53,11 @@ The module is the CYC-FX1 (V2).
 
 The module includes the 74HC125 and AMS1117 chips.
 
-| Wire | Pin    |
-| ---- | ------ |
-| VCC  | 5V     |
-| GND  | GND    |
-| MISO | Pin 12 |
-| MOSI | Pin 11 |
-| SCK  | Pin 13 |
-| CS   | Pin 10 |
+| Wire        | Pin    |
+| ----        | ------ |
+| VCC  orange | 5V     |
+| GND  black  | GND    |
+| MISO grey   | Pin 12 |
+| MOSI purple | Pin 11 |
+| SCK  blue   | Pin 13 |
+| CS   green  | Pin 10 |
