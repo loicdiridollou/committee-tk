@@ -19,13 +19,13 @@ File dataFile;
 String currentFilename = "";
 bool fileReady = false;
 
-// Your calibration values
+// Calibration values — updated at runtime by performCalibration()
 float x_min = -243.0;
 float x_max = 998.0;
 float y_min = -928.0;
 float y_max = 400.0;
 
-// Calculate offsets and scales
+// Offsets and scales — recomputed after each calibration
 float x_offset = (x_max + x_min) / 2.0;
 float y_offset = (y_max + y_min) / 2.0;
 float x_scale = (x_max - x_min) / 2.0;
@@ -232,6 +232,7 @@ void handleWebClients() {
           if (currentLine.length() == 0) {
             
             // Check for button actions in the request
+            bool redirectHome = false;
             if (request.indexOf("GET /reset") >= 0) {
               Serial.println("Reset button clicked!");
               handleResetCommand();
@@ -239,12 +240,21 @@ void handleWebClients() {
             else if (request.indexOf("GET /calibrate") >= 0) {
               Serial.println("Calibrate button clicked!");
               handleCalibrateCommand();
+              redirectHome = true;
             }
             else if (request.indexOf("GET /newfile") >= 0) {
               Serial.println("New file button clicked!");
               handleNewFileCommand();
             }
-            
+
+            if (redirectHome) {
+              client.println("HTTP/1.1 302 Found");
+              client.println("Location: /");
+              client.println("Connection: close");
+              client.println();
+              break;
+            }
+
             // Send HTTP response
             client.println("HTTP/1.1 200 OK");
             client.println("Content-type:text/html");
@@ -254,7 +264,7 @@ void handleWebClients() {
             // Send HTML page
             client.println("<!DOCTYPE html><html><head>");
             client.println("<meta name='viewport' content='width=device-width, initial-scale=1'>");
-            client.println("<meta http-equiv='refresh' content='2'>");
+            client.println("<meta http-equiv='refresh' content='5'>");
             client.println("<style>");
             client.println("body { font-family: Arial; margin: 20px; background: #f0f0f0; }");
             client.println(".container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }");
@@ -307,9 +317,9 @@ void handleWebClients() {
             client.println("<div class='label'>GPS Position</div>");
             if (gps.location.isValid()) {
               client.print("<div class='value' style='font-size: 18px;'>");
-              client.print(gps.location.lat(), 6);
+              client.print(toDMS(gps.location.lat(), true));
               client.print(", ");
-              client.print(gps.location.lng(), 6);
+              client.print(toDMS(gps.location.lng(), false));
               client.println("</div>");
             } else {
               client.println("<div class='value'>Waiting for GPS...</div>");
@@ -390,7 +400,19 @@ void handleWebClients() {
             client.println("<a href='/newfile' class='button'>Create New Log File</a>");
             client.println("</div>");
             
-            client.println("<p style='text-align: center; color: #999; margin-top: 20px;'>Auto-refresh every 2 seconds</p>");
+            // Calibration values
+            client.println("<div style='margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;'>");
+            client.println("<h3 style='margin-top: 0;'>Compass Calibration Values</h3>");
+            client.println("<table>");
+            client.println("<tr><th>Parameter</th><th>Value</th></tr>");
+            client.print("<tr><td>x_offset</td><td>"); client.print(x_offset, 2); client.println("</td></tr>");
+            client.print("<tr><td>x_scale</td><td>");  client.print(x_scale, 2);  client.println("</td></tr>");
+            client.print("<tr><td>y_offset</td><td>"); client.print(y_offset, 2); client.println("</td></tr>");
+            client.print("<tr><td>y_scale</td><td>");  client.print(y_scale, 2);  client.println("</td></tr>");
+            client.println("</table>");
+            client.println("</div>");
+
+            client.println("<p style='text-align: center; color: #999; margin-top: 20px;'>Auto-refresh every 5 seconds</p>");
             client.println("</div></body></html>");
             
             break;
@@ -537,6 +559,16 @@ float getAverageCompass() {
   return avgHeading;
 }
 
+String toDMS(float decimal, bool isLat) {
+  char dir = isLat ? (decimal >= 0 ? 'N' : 'S') : (decimal >= 0 ? 'E' : 'W');
+  decimal = abs(decimal);
+  int deg = (int)decimal;
+  float minFull = (decimal - deg) * 60.0;
+  int mn = (int)minFull;
+  float sec = (minFull - mn) * 60.0;
+  return String(deg) + "° " + String(mn) + "' " + String(sec, 1) + "\" " + dir;
+}
+
 int getNumberOfSatellites() {
   if (gps.satellites.isValid()) {
     return gps.satellites.value();
@@ -578,10 +610,10 @@ float calculateWindSpeed() {
     // Wind speed: pulses per second * calibration factor
     float pulsesPerSecond = pulseCount / 2.0;  // Divided by 2 since we measure over 2 seconds
     float windSpeed = pulsesPerSecond * 0.315;
-    
+
     pulseCount = 0;
 
-    return windSpeed / 1.852; // speed in knots
+    return windSpeed / 0.5144; // m/s to knots (1 knot = 0.5144 m/s)
 }
 
 float readWindDirection() {
@@ -618,11 +650,62 @@ void handleResetCommand() {
   Serial.println("Pulse count reset to 0");
 }
 
+void performCalibration() {
+  Serial.println("Calibration started — rotate compass slowly through 360° for 10 seconds...");
+
+  float cal_x_min =  999999;
+  float cal_x_max = -999999;
+  float cal_y_min =  999999;
+  float cal_y_max = -999999;
+
+  unsigned long startTime = millis();
+  while (millis() - startTime < 10000) {
+    Wire.beginTransmission(QMC5883L_ADDR);
+    Wire.write(0x00);
+    Wire.endTransmission();
+    Wire.requestFrom(QMC5883L_ADDR, 6);
+
+    if (Wire.available() >= 6) {
+      int16_t x_raw = Wire.read() | (Wire.read() << 8);
+      int16_t y_raw = Wire.read() | (Wire.read() << 8);
+      Wire.read(); Wire.read();  // discard Z
+
+      if (x_raw < cal_x_min) cal_x_min = x_raw;
+      if (x_raw > cal_x_max) cal_x_max = x_raw;
+      if (y_raw < cal_y_min) cal_y_min = y_raw;
+      if (y_raw > cal_y_max) cal_y_max = y_raw;
+    }
+
+    delay(10);  // ~100 samples per second
+  }
+
+  // Update global calibration values
+  x_min = cal_x_min;
+  x_max = cal_x_max;
+  y_min = cal_y_min;
+  y_max = cal_y_max;
+
+  // Recompute offsets and scales
+  x_offset  = (x_max + x_min) / 2.0;
+  y_offset  = (y_max + y_min) / 2.0;
+  x_scale   = (x_max - x_min) / 2.0;
+  y_scale   = (y_max - y_min) / 2.0;
+  avg_scale = (x_scale + y_scale) / 2.0;
+
+  Serial.println("Calibration complete!");
+  Serial.print("x_min="); Serial.print(x_min);
+  Serial.print("  x_max="); Serial.println(x_max);
+  Serial.print("y_min="); Serial.print(y_min);
+  Serial.print("  y_max="); Serial.println(y_max);
+  Serial.print("x_offset="); Serial.print(x_offset);
+  Serial.print("  y_offset="); Serial.println(y_offset);
+  Serial.print("x_scale="); Serial.print(x_scale);
+  Serial.print("  y_scale="); Serial.println(y_scale);
+  Serial.print("avg_scale="); Serial.println(avg_scale);
+}
+
 void handleCalibrateCommand() {
-  // Example: Start calibration routine
-  Serial.println("Starting calibration...");
-  // Add your calibration code here
-  // For example: read multiple compass values, find min/max, etc.
+  performCalibration();
 }
 
 void handleNewFileCommand() {
