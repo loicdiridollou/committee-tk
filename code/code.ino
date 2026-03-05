@@ -4,6 +4,9 @@
 #include <SPI.h>
 #include <SD.h>
 #include <WiFiS3.h>
+#include "Arduino_LED_Matrix.h"
+
+ArduinoLEDMatrix matrix;
 
 #define QMC5883L_ADDR 0x0D
 
@@ -66,10 +69,30 @@ int historyIndex = 0;
 int historyCount = 0;
 unsigned long lastHistoryTime = 0;
 
+void displayHeart() {
+  byte heart[8][12] = {
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0 },
+    { 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0 },
+    { 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0 },
+    { 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0 },
+    { 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0 },
+    { 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0 },
+    { 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0 },
+  };
+  matrix.renderBitmap(heart, 8, 12);
+}
+
+void clearMatrix() {
+  byte blank[8][12] = { { 0 } };
+  matrix.renderBitmap(blank, 8, 12);
+}
+
 void setup() {
   Serial.begin(115200);
   gpsSerial.begin(115200);
   Wire.begin();
+  matrix.begin();
 
   // Initialize QMC5883L
   Wire.beginTransmission(QMC5883L_ADDR);
@@ -651,6 +674,7 @@ void handleResetCommand() {
 }
 
 void performCalibration() {
+  displayHeart();
   Serial.println("Calibration started — rotate compass slowly through 360° for 10 seconds...");
 
   float cal_x_min =  999999;
@@ -692,6 +716,7 @@ void performCalibration() {
   y_scale   = (y_max - y_min) / 2.0;
   avg_scale = (x_scale + y_scale) / 2.0;
 
+  clearMatrix();
   Serial.println("Calibration complete!");
   Serial.print("x_min="); Serial.print(x_min);
   Serial.print("  x_max="); Serial.println(x_max);
