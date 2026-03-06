@@ -238,6 +238,48 @@ void loop() {
   delay(100);
 }
 
+void sendFileDownload(WiFiClient& client) {
+  if (!fileReady || currentFilename.length() == 0) {
+    client.println("HTTP/1.1 503 Service Unavailable");
+    client.println("Content-type:text/plain");
+    client.println("Connection: close");
+    client.println();
+    client.println("No log file available.");
+    Serial.println("Download requested but no file ready.");
+    return;
+  }
+
+  File f = SD.open(currentFilename.c_str(), FILE_READ);
+  if (!f) {
+    client.println("HTTP/1.1 404 Not Found");
+    client.println("Content-type:text/plain");
+    client.println("Connection: close");
+    client.println();
+    client.println("File not found on SD card.");
+    Serial.println("Download requested but file not found.");
+    return;
+  }
+
+  Serial.print("Sending file: ");
+  Serial.println(currentFilename);
+
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-Type: text/csv");
+  client.print("Content-Disposition: attachment; filename=\"");
+  client.print(currentFilename);
+  client.println("\"");
+  client.println("Connection: close");
+  client.println();
+
+  uint8_t buf[64];
+  while (f.available()) {
+    int n = f.read(buf, sizeof(buf));
+    client.write(buf, n);
+  }
+  f.close();
+  Serial.println("File sent.");
+}
+
 void handleWebClients() {
   WiFiClient client = server.available();
   
@@ -256,7 +298,12 @@ void handleWebClients() {
             
             // Check for button actions in the request
             bool redirectHome = false;
-            if (request.indexOf("GET /reset") >= 0) {
+            if (request.indexOf("GET /download") >= 0) {
+              Serial.println("Download button clicked!");
+              sendFileDownload(client);
+              break;
+            }
+            else if (request.indexOf("GET /reset") >= 0) {
               Serial.println("Reset button clicked!");
               handleResetCommand();
             }
@@ -421,6 +468,14 @@ void handleWebClients() {
             client.println("<a href='/reset' class='button danger'>Reset Pulse Count</a>");
             client.println("<a href='/calibrate' class='button success'>Start Calibration</a>");
             client.println("<a href='/newfile' class='button'>Create New Log File</a>");
+            client.print("<a href='/download' class='button' download>");
+            if (fileReady && currentFilename.length() > 0) {
+              client.print("Download ");
+              client.print(currentFilename);
+            } else {
+              client.print("Download CSV (unavailable)");
+            }
+            client.println("</a>");
             client.println("</div>");
             
             // Calibration values
@@ -673,9 +728,27 @@ void handleResetCommand() {
   Serial.println("Pulse count reset to 0");
 }
 
+// Draws the calibration countdown on the LED matrix.
+// secondsElapsed: how many half-columns to remove (0 = full, 24 = empty).
+// Removal order: top half then bottom half of each column, from right (col 11) to left (col 0).
+void drawCalibrationMatrix(int secondsElapsed) {
+  byte frame[8][12];
+  for (int r = 0; r < 8; r++)
+    for (int c = 0; c < 12; c++)
+      frame[r][c] = 1;
+
+  for (int s = 0; s < secondsElapsed && s < 24; s++) {
+    int col = 11 - (s / 2);        // col 11 → 0
+    int rowStart = (s % 2) * 4;    // 0 = top half (rows 0-3), 1 = bottom half (rows 4-7)
+    for (int r = rowStart; r < rowStart + 4; r++)
+      frame[r][col] = 0;
+  }
+
+  matrix.renderBitmap(frame, 8, 12);
+}
+
 void performCalibration() {
-  displayHeart();
-  Serial.println("Calibration started — rotate compass slowly through 360° for 10 seconds...");
+  Serial.println("Calibration started — rotate compass slowly through 360° for 24 seconds...");
 
   float cal_x_min =  999999;
   float cal_x_max = -999999;
@@ -683,7 +756,14 @@ void performCalibration() {
   float cal_y_max = -999999;
 
   unsigned long startTime = millis();
-  while (millis() - startTime < 10000) {
+  int lastSecond = -1;
+  while (millis() - startTime < 24000) {
+    int currentSecond = (int)((millis() - startTime) / 1000);
+    if (currentSecond != lastSecond) {
+      drawCalibrationMatrix(currentSecond);
+      lastSecond = currentSecond;
+    }
+
     Wire.beginTransmission(QMC5883L_ADDR);
     Wire.write(0x00);
     Wire.endTransmission();
