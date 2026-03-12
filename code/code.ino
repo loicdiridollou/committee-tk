@@ -40,6 +40,7 @@ TinyGPSPlus gps;
 SoftwareSerial gpsSerial(3, 4);  // GPS TX to pin 3, RX to pin 4
 
 const int windVanePin = A0;
+const int windSpeedVoltagePin = A1;
 const int sensorPin = 2;
 volatile unsigned long lastPulseTime = 0;
 volatile int pulseCount = 0;
@@ -54,7 +55,9 @@ int samplesCollected = 0;
 
 // Store latest values for web display
 float latest_wind_speed = 0;
+float latest_wind_speed_voltage = 0;
 float latest_wind_direction = 0;
+float latest_wind_direction_voltage = 0;
 float latest_heading = 0;
 
 // Historical data storage (15 minutes at 1-minute intervals)
@@ -207,12 +210,16 @@ void loop() {
     latest_wind_speed = calculateWindSpeed();
     Serial.print("Wind Speed: ");
     Serial.print(latest_wind_speed, 1);
-    Serial.println("kts");
+    Serial.print("kts (");
+    Serial.print(latest_wind_speed_voltage, 3);
+    Serial.println("V)");
 
     latest_wind_direction = readWindDirection();
     Serial.print("Wind direction: ");
     Serial.print(latest_wind_direction, 1);
-    Serial.println("°");
+    Serial.print("° (");
+    Serial.print(latest_wind_direction_voltage, 3);
+    Serial.println("V)");
 
     printGPSDateTime();
 
@@ -223,7 +230,7 @@ void loop() {
 
     // Log data to SD card only if file is ready and we have enough samples
     if (SD_card_connected && fileReady && samplesCollected >= NUM_SAMPLES) {
-      logDataToSD(latest_wind_speed, latest_wind_direction, latest_heading);
+      logDataToSD(latest_wind_speed, latest_wind_speed_voltage, latest_wind_direction, latest_wind_direction_voltage, latest_heading);
     }
 
     lastTime = millis();
@@ -366,14 +373,20 @@ void handleWebClients() {
             client.println("<div class='label'>Wind Speed</div>");
             client.print("<div class='value'>");
             client.print(latest_wind_speed, 1);
-            client.println(" kts</div></div>");
+            client.print(" kts</div>");
+            client.print("<div class='label'>Voltage: </div><div>");
+            client.print(latest_wind_speed_voltage, 3);
+            client.println(" V</div></div>");
             
             // Wind Direction
             client.println("<div class='reading'>");
             client.println("<div class='label'>Wind Direction</div>");
             client.print("<div class='value'>");
             client.print(latest_wind_direction, 1);
-            client.println("&#xB0;</div></div>");
+            client.print("&#xB0;</div>");
+            client.print("<div class='label'>Voltage: </div><div>");
+            client.print(latest_wind_direction_voltage, 3);
+            client.println(" V</div></div>");
             
             // Compass Heading
             client.println("<div class='reading'>");
@@ -523,7 +536,7 @@ void initializeLogFile() {
     dataFile = SD.open(currentFilename.c_str(), FILE_WRITE);
     if (dataFile) {
       // Write CSV headers
-      dataFile.println("Timestamp,Latitude,Longitude,Satellites,Wind_Speed_kts,Wind_Direction_deg,Heading_deg");
+      dataFile.println("Timestamp,Latitude,Longitude,Satellites,Wind_Speed_kts,Wind_Speed_V,Wind_Direction_deg,Wind_Direction_V,Heading_deg");
       dataFile.close();
       Serial.println("Headers written successfully");
       fileReady = true;
@@ -536,7 +549,7 @@ void initializeLogFile() {
   }
 }
 
-void logDataToSD(float windSpeed, float windDirection, float heading) {
+void logDataToSD(float windSpeed, float windSpeedVoltage, float windDirection, float windDirectionVoltage, float heading) {
   dataFile = SD.open(currentFilename.c_str(), FILE_WRITE);
   
   if (dataFile) {
@@ -580,11 +593,19 @@ void logDataToSD(float windSpeed, float windDirection, float heading) {
     // Wind speed
     dataFile.print(windSpeed, 2);
     dataFile.print(",");
-    
+
+    // Wind speed voltage
+    dataFile.print(windSpeedVoltage, 3);
+    dataFile.print(",");
+
     // Wind direction
     dataFile.print(windDirection, 2);
     dataFile.print(",");
-    
+
+    // Wind direction voltage
+    dataFile.print(windDirectionVoltage, 3);
+    dataFile.print(",");
+
     // Heading
     dataFile.println(heading, 2);
     
@@ -685,6 +706,10 @@ void printGPSDateTime() {
 }
 
 float calculateWindSpeed() {
+    // Read and store analog voltage from wind speed sensor
+    int rawValue = analogRead(windSpeedVoltagePin);
+    latest_wind_speed_voltage = rawValue * (5.0 / 1023.0);
+
     // Wind speed: pulses per second * calibration factor
     float pulsesPerSecond = pulseCount / 2.0;  // Divided by 2 since we measure over 2 seconds
     float windSpeed = pulsesPerSecond * 0.315;
@@ -697,14 +722,15 @@ float calculateWindSpeed() {
 float readWindDirection() {
   // Read analog value (0-1023)
   int sensorValue = analogRead(windVanePin);
-  
+
   // Convert to voltage (0-5V scale, but sensor outputs 0-2.5V)
   float voltage = sensorValue * (5.0 / 1023.0);
-  
+  latest_wind_direction_voltage = voltage;
+
   // Convert to degrees (0-360)
   // Since sensor outputs 0-2.5V for 0-360°, we scale accordingly
   float direction = (voltage / 2.5) * 360.0;
-  
+
   // Keep direction in 0-360 range
   if (direction < 0) direction = 0;
   if (direction > 360) direction = 360;
