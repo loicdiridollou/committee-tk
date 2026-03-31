@@ -185,8 +185,10 @@ void loop() {
     gps.encode(gpsSerial.read());
   }
 
-  // Initialize file once we have GPS date
-  if (!fileReady && gps.date.isValid() && gps.time.isValid()) {
+  // Initialize file once we have a real GPS date (year > 2000 guards against
+  // the GPS library reporting isValid() while still outputting all-zero fields,
+  // which would otherwise produce the filename "00000000.CSV").
+  if (!fileReady && gps.date.isValid() && gps.time.isValid() && gps.date.year() > 2000) {
     initializeLogFile();
   }
 
@@ -245,8 +247,8 @@ void loop() {
   delay(100);
 }
 
-void sendFileDownload(WiFiClient& client) {
-  if (!fileReady || currentFilename.length() == 0) {
+void sendFileDownload(WiFiClient& client, String filename) {
+  if (filename.length() == 0) {
     client.println("HTTP/1.1 503 Service Unavailable");
     client.println("Content-type:text/plain");
     client.println("Connection: close");
@@ -256,7 +258,7 @@ void sendFileDownload(WiFiClient& client) {
     return;
   }
 
-  File f = SD.open(currentFilename.c_str(), FILE_READ);
+  File f = SD.open(filename.c_str(), FILE_READ);
   if (!f) {
     client.println("HTTP/1.1 404 Not Found");
     client.println("Content-type:text/plain");
@@ -268,12 +270,12 @@ void sendFileDownload(WiFiClient& client) {
   }
 
   Serial.print("Sending file: ");
-  Serial.println(currentFilename);
+  Serial.println(filename);
 
   client.println("HTTP/1.1 200 OK");
   client.println("Content-Type: text/csv");
   client.print("Content-Disposition: attachment; filename=\"");
-  client.print(currentFilename);
+  client.print(filename);
   client.println("\"");
   client.println("Connection: close");
   client.println();
@@ -304,10 +306,25 @@ void handleWebClients() {
           if (currentLine.length() == 0) {
             
             // Check for button actions in the request
+            // Note: more-specific routes (/download?file=, /files) must come
+            // before less-specific ones (/download) to avoid false matches.
             bool redirectHome = false;
-            if (request.indexOf("GET /download") >= 0) {
+            if (request.indexOf("GET /download?file=") >= 0) {
+              Serial.println("Download specific file clicked!");
+              int start = request.indexOf("GET /download?file=") + 19;
+              int end = request.indexOf(" ", start);
+              String fname = request.substring(start, end);
+              sendFileDownload(client, fname);
+              break;
+            }
+            else if (request.indexOf("GET /download") >= 0) {
               Serial.println("Download button clicked!");
-              sendFileDownload(client);
+              sendFileDownload(client, currentFilename);
+              break;
+            }
+            else if (request.indexOf("GET /files") >= 0) {
+              Serial.println("Files page requested!");
+              sendFilesPage(client);
               break;
             }
             else if (request.indexOf("GET /reset") >= 0) {
@@ -367,6 +384,10 @@ void handleWebClients() {
             
             client.println("<div class='container'>");
             client.println("<h1>Weather Station</h1>");
+            client.println("<div style='text-align:center; margin-bottom:15px;'>");
+            client.println("<a href='/' class='button'>Dashboard</a>&nbsp;");
+            client.println("<a href='/files' class='button'>SD Card Files</a>");
+            client.println("</div>");
             
             // Wind Speed
             client.println("<div class='reading'>");
@@ -843,6 +864,80 @@ void handleNewFileCommand() {
   // Example: Force creation of new log file
   fileReady = false;
   Serial.println("Forcing new file creation on next GPS lock");
+}
+
+void sendFilesPage(WiFiClient& client) {
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-type:text/html");
+  client.println("Connection: close");
+  client.println();
+
+  client.println("<!DOCTYPE html><html><head>");
+  client.println("<meta name='viewport' content='width=device-width, initial-scale=1'>");
+  client.println("<style>");
+  client.println("body { font-family: Arial; margin: 20px; background: #f0f0f0; }");
+  client.println(".container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }");
+  client.println("h1 { color: #333; text-align: center; }");
+  client.println("table { width: 100%; border-collapse: collapse; margin: 20px 0; }");
+  client.println("th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }");
+  client.println("th { background: #007bff; color: white; }");
+  client.println("tr:hover { background: #f5f5f5; }");
+  client.println(".button { display: inline-block; padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; }");
+  client.println(".button:hover { background: #0056b3; }");
+  client.println(".nav { text-align: center; margin-bottom: 20px; }");
+  client.println("</style>");
+  client.println("</head><body><div class='container'>");
+  client.println("<h1>SD Card Files</h1>");
+  client.println("<div class='nav'><a href='/' class='button'>Back to Dashboard</a></div>");
+
+  if (!SD_card_connected) {
+    client.println("<p style='color:red; text-align:center;'>SD card not available.</p>");
+  } else {
+    File root = SD.open("/");
+    if (!root) {
+      client.println("<p style='color:red; text-align:center;'>Failed to open SD card root.</p>");
+    } else {
+      client.println("<table>");
+      client.println("<tr><th>Filename</th><th>Size</th><th>Action</th></tr>");
+
+      bool found = false;
+      File entry = root.openNextFile();
+      while (entry) {
+        if (!entry.isDirectory()) {
+          found = true;
+          String fname = String(entry.name());
+          unsigned long fsize = entry.size();
+          entry.close();
+
+          client.print("<tr><td>");
+          client.print(fname);
+          client.print("</td><td>");
+          if (fsize >= 1024) {
+            client.print(fsize / 1024);
+            client.print(" KB");
+          } else {
+            client.print(fsize);
+            client.print(" B");
+          }
+          client.print("</td><td><a href='/download?file=");
+          client.print(fname);
+          client.println("' class='button'>Download</a></td></tr>");
+        } else {
+          entry.close();
+        }
+        entry = root.openNextFile();
+      }
+
+      if (!found) {
+        client.println("<tr><td colspan='3' style='text-align:center;'>No files found on SD card.</td></tr>");
+      }
+
+      client.println("</table>");
+      root.close();
+    }
+  }
+
+  client.println("</div></body></html>");
 }
 
 void storeHistoricalData(float windSpeed, float windDirection) {
